@@ -10,7 +10,6 @@ from pathlib import Path
 import re
 from urllib.parse import urlparse, parse_qs
 import dotenv
-from googletrans import Translator
 
 
 dotenv.load_dotenv()
