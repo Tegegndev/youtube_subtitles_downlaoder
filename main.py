@@ -39,27 +39,9 @@ class YouTubeTranscript:
         Extract video ID from various YouTube URL formats.
         Supports: watch?v=, embed/, shorts/, youtu.be/
         """
-        # Handle youtu.be short links
-        if 'youtu.be' in url:
-            path = urlparse(url).path.lstrip('/')
-            return path.split('?')[0]
-        
-        # Parse query parameters for v=
-        parsed_url = urlparse(url)
-        query_params = parse_qs(parsed_url.query)
-        if 'v' in query_params:
-            return query_params['v'][0]
-        
-        # Handle embed URLs
-        if '/embed/' in parsed_url.path:
-            return parsed_url.path.split('/embed/')[1].split('?')[0]
-        
-        # Handle shorts URLs
-        if '/shorts/' in parsed_url.path:
-            return parsed_url.path.split('/shorts/')[1].split('?')[0]
-        
-        # Fallback: regex for 11-character ID in path
-        match = re.search(r'([a-zA-Z0-9_-]{11})', url)
+        # Comprehensive regex for YouTube Video IDs
+        pattern = r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})'
+        match = re.search(pattern, url)
         if match:
             return match.group(1)
         
@@ -101,8 +83,39 @@ class YouTubeTranscript:
     def get_srt(self, language='en_auto', mode='default'):
         if self.response is None:
             self.fetch_transcript()
-        data = self.response.json()['data']
-        transcripts = data['transcripts'][language][mode]
+            
+        resp_json = self.response.json()
+        if not resp_json or 'data' not in resp_json:
+             return "Error: Could not retrieve transcript data."
+
+        data = resp_json['data']
+        if 'transcripts' not in data:
+             return "Error: No transcripts found in response."
+
+        transcripts_map = data['transcripts']
+        
+        # Handle missing language key (KeyError fix)
+        if language not in transcripts_map:
+            available_languages = list(transcripts_map.keys())
+            if not available_languages:
+                return "No subtitles available for this video."
+            
+            # Fallback strategy: prefer 'en' if 'en_auto' is missing, otherwise take first available
+            if language == 'en_auto' and 'en' in transcripts_map:
+                language = 'en'
+            else:
+                language = available_languages[0]
+                print(f"Requested language not found. Falling back to '{language}'")
+
+        # Handle missing mode key
+        if mode not in transcripts_map[language]:
+            available_modes = list(transcripts_map[language].keys())
+            if available_modes:
+                mode = available_modes[0]
+            else:
+                return "No transcript segments found."
+
+        transcripts = transcripts_map[language][mode]
         srt_lines = []
         for i, segment in enumerate(transcripts, start=1):
             start_time = self._format_time(segment['start'])
