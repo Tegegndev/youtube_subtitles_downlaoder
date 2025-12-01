@@ -82,7 +82,7 @@ class YouTubeTranscript:
             self.fetch_transcript()
         return self.response.json()
 
-    def _get_transcript_data(self, language='en_auto', mode='default'):
+    def _get_transcript_data(self, language='en', mode='default'):
         if self.response is None:
             self.fetch_transcript()
             
@@ -98,16 +98,18 @@ class YouTubeTranscript:
         
         # Handle missing language key (KeyError fix)
         if language not in transcripts_map:
-            available_languages = list(transcripts_map.keys())
-            if not available_languages:
-                return None
-            
-            # Fallback strategy: prefer 'en' if 'en_auto' is missing, otherwise take first available
-            if language == 'en_auto' and 'en' in transcripts_map:
+            # Prefer 'en', then 'en_auto', then first available
+            if 'en' in transcripts_map:
                 language = 'en'
+            elif 'en_auto' in transcripts_map:
+                language = 'en_auto'
             else:
-                language = available_languages[0]
-                print(f"Requested language not found. Falling back to '{language}'")
+                available_languages = list(transcripts_map.keys())
+                if available_languages:
+                    language = available_languages[0]
+                    print(f"Requested language not found. Falling back to '{language}'")
+                else:
+                    return None
 
         # Handle missing mode key
         if mode not in transcripts_map[language]:
@@ -119,7 +121,7 @@ class YouTubeTranscript:
 
         return transcripts_map[language][mode]
 
-    def get_srt(self, language='en_auto', mode='default'):
+    def get_srt(self, language='en', mode='default'):
         transcripts = self._get_transcript_data(language, mode)
         
         if not transcripts:
@@ -153,20 +155,22 @@ class YouTubeTranscript:
             self.fetch_transcript()
         return self.response.json()['data']['language_code']
 
-    def save_to_srt(self, filename=None, path="subtitles", language='en_auto', mode='default'):
+    def save_to_srt(self, filename=None, path="subtitles", language='en', mode='default'):
         """
         Saves the SRT content to a file.
         
         
         :param filename: Name of the file to save (e.g., 'transcript.srt')
         :param path: Directory path to save the file (default: 'subtitles')
-        :param language: Language code for the transcript (default: 'en_auto')
+        :param language: Language code for the transcript (default: 'en')
         :param mode: Transcript mode ('default', 'custom', or 'auto')
         """
         # Create the directory if it doesn't exist
         os.makedirs(path, exist_ok=True)
         if not filename:
-            filename = self.get_video_info()['name']+'.srt'
+            video_name = self.get_video_info()['name']
+            safe_name = "".join([c for c in video_name if c.isalpha() or c.isdigit() or c in " ._-"]).strip()
+            filename = safe_name + '.srt'
         # Get the SRT content
         srt_content = self.get_srt(language=language, mode=mode)
         

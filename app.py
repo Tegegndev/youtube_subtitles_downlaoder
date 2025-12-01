@@ -78,16 +78,39 @@ def handle_url(message):
         
         # Construct filename
         video_info = ytdl.get_video_info()
-        filename = video_info['name'] + '.srt'
+        video_name = video_info['name']
+        safe_name = "".join([c for c in video_name if c.isalpha() or c.isdigit() or c in " ._-"]).strip()
+        filename = f"{safe_name}.srt"
         path = "subtitles"
         filepath = os.path.join(path, filename)
         
         if os.path.exists(filepath):
             with open(filepath, 'rb') as f:
-                bot.send_document(message.chat.id, f, caption="✅ Subtitle downloaded successfully!")
+                bot.send_document(message.chat.id, f, caption="✅ English subtitle downloaded successfully!")
             bot.delete_message(message.chat.id, status_msg.message_id)
+            
+            # Get transcripts for estimation
+            transcripts = ytdl._get_transcript_data()
+            if transcripts:
+                num_segments = len(transcripts)
+                estimated_seconds = num_segments / 10  # Assuming 10 workers
+                estimated_minutes = estimated_seconds / 60
+                bot.send_message(message.chat.id, f"Translating to Amharic version... Estimated time: {estimated_minutes:.1f} minutes")
+            else:
+                bot.send_message(message.chat.id, "Translating to Amharic version...")
+            
+            ytdl.amharic_translate()
+            
+            # Send Amharic version
+            amharic_filename = f"am_{safe_name}.srt"
+            amharic_filepath = os.path.join(path, amharic_filename)
+            if os.path.exists(amharic_filepath):
+                with open(amharic_filepath, 'rb') as f:
+                    bot.send_document(message.chat.id, f, caption="✅ Amharic subtitle downloaded successfully!")
+            else:
+                bot.send_message(message.chat.id, "❌ Failed to generate Amharic subtitle.")
         else:
-            bot.edit_message_text("❌ Error: File could not be saved.", chat_id=message.chat.id, message_id=status_msg.message_id)
+            bot.edit_message_text("❌ Error: English file could not be saved.", chat_id=message.chat.id, message_id=status_msg.message_id)
             
     except Exception as e:
         print(f"Error processing URL: {e}")
