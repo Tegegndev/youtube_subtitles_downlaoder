@@ -2,6 +2,7 @@ from telebot import TeleBot
 from dotenv import load_dotenv
 import os
 from main import YouTubeTranscript
+from telebot import types
 
 
 load_dotenv()
@@ -12,8 +13,22 @@ bot = TeleBot(API_TOKEN)
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.send_message(message.from_user.id,"hey I am youtube subtitle downloader bot  send me youtube link to get subtitle")
-    #next step handler
+    keyboard = types.InlineKeyboardMarkup()
+    about = types.InlineKeyboardButton(text="ℹ️ About", callback_data="about")
+    settings = types.InlineKeyboardButton(text="⚙️ Settings", callback_data="settings")
+    developer_btn = types.InlineKeyboardButton(text="👨‍💻 Developer", url="https://t.me/tegegndev")
+    keyboard.add(about, settings)
+    keyboard.add(developer_btn)
+
+    welcome_msg = (
+        f"👋 Hello {message.from_user.first_name}!\n\n"
+        "🎬 Send me a YouTube video URL and I'll download the subtitles for you as an SRT file.\n"
+        "⬇️ Paste the link and I'll take care of the rest.\n\n"
+        "✨ Tip: You can use /start anytime to see this message again.\n\n"
+        "— Developed by @yegna_tv"
+    )
+
+    bot.send_message(message.from_user.id, welcome_msg, reply_markup=keyboard)
     bot.register_next_step_handler(message, handle_url)
 
 # Function to handle the YouTube URL
