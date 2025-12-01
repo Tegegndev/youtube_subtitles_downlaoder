@@ -10,6 +10,8 @@ from pathlib import Path
 import re
 from urllib.parse import urlparse, parse_qs
 import dotenv
+from googletrans import Translator
+
 
 dotenv.load_dotenv()
 
@@ -80,17 +82,17 @@ class YouTubeTranscript:
             self.fetch_transcript()
         return self.response.json()
 
-    def get_srt(self, language='en_auto', mode='default'):
+    def _get_transcript_data(self, language='en_auto', mode='default'):
         if self.response is None:
             self.fetch_transcript()
             
         resp_json = self.response.json()
         if not resp_json or 'data' not in resp_json:
-             return "Error: Could not retrieve transcript data."
+             return None
 
         data = resp_json['data']
         if 'transcripts' not in data:
-             return "Error: No transcripts found in response."
+             return None
 
         transcripts_map = data['transcripts']
         
@@ -98,7 +100,7 @@ class YouTubeTranscript:
         if language not in transcripts_map:
             available_languages = list(transcripts_map.keys())
             if not available_languages:
-                return "No subtitles available for this video."
+                return None
             
             # Fallback strategy: prefer 'en' if 'en_auto' is missing, otherwise take first available
             if language == 'en_auto' and 'en' in transcripts_map:
@@ -113,9 +115,16 @@ class YouTubeTranscript:
             if available_modes:
                 mode = available_modes[0]
             else:
-                return "No transcript segments found."
+                return None
 
-        transcripts = transcripts_map[language][mode]
+        return transcripts_map[language][mode]
+
+    def get_srt(self, language='en_auto', mode='default'):
+        transcripts = self._get_transcript_data(language, mode)
+        
+        if not transcripts:
+             return "Error: Could not retrieve transcript data."
+
         srt_lines = []
         for i, segment in enumerate(transcripts, start=1):
             start_time = self._format_time(segment['start'])
@@ -169,9 +178,50 @@ class YouTubeTranscript:
             f.write(srt_content)
         
         print(f"SRT file saved to: {file_path}")
+    
+    def amharic_translate(self):
+        from translatepy import Translator
+        from concurrent.futures import ThreadPoolExecutor
+        t = Translator()
+        
+        transcripts = self._get_transcript_data()
+        if not transcripts:
+            print("No transcripts available for translation.")
+            return
+
+        # Sanitize filename
+        video_name = self.get_video_info().get('name', 'video')
+        safe_name = "".join([c for c in video_name if c.isalpha() or c.isdigit() or c in " ._-"]).strip()
+        filename = f"am_{safe_name}.srt"
+        full_path = os.path.join('subtitles', filename)
+        os.makedirs('subtitles', exist_ok=True)
+        
+        print(f"Translating {len(transcripts)} segments to Amharic...")
+        
+        def translate_text(text):
+            try:
+                return t.translate(text, "am").result
+            except Exception:
+                return text
+
+        # Use threading to speed up translation
+        texts = [s['text'] for s in transcripts]
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            translated_texts = list(executor.map(translate_text, texts))
+
+        srt_lines = []
+        for i, (segment, translated_text) in enumerate(zip(transcripts, translated_texts), start=1):
+            start_time = self._format_time(segment['start'])
+            end_time = self._format_time(segment['end'])
+            srt_lines.append(f"{i}\n{start_time} --> {end_time}\n{translated_text}\n")
+            
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write("\n".join(srt_lines))
+        print(f"Translation saved to {full_path}")
 
 if __name__ == "__main__":
     yt = YouTubeTranscript("https://www.youtube.com/watch?v=WOvj84xq_fc",api_key)
     print(yt.get_srt()[:500])
     print(yt.get_video_info())
     yt.save_to_srt()
+    yt.amharic_translate()
