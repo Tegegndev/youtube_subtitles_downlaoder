@@ -14,6 +14,7 @@ import dotenv
 dotenv.load_dotenv()
 
 api_key = os.getenv("API_KEY")
+
 class YouTubeTranscript:
     COOKIE_FILE = "cookies.json"
     REFRESH_INTERVAL = 3600  # 1 hour
