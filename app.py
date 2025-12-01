@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 from main import YouTubeTranscript
 from telebot import types
-
+import re
 
 load_dotenv()
 API_TOKEN =os.getenv("BOT_TOKEN")
@@ -28,27 +28,55 @@ def start(message):
         "— Developed by @yegna_tv"
     )
 
-    bot.send_message(message.from_user.id, welcome_msg, reply_markup=keyboard)
-    bot.register_next_step_handler(message, handle_url)
+    # Fixed typo: message.from_usewevhookr.id -> message.chat.id
+    bot.send_message(message.chat.id, welcome_msg, reply_markup=keyboard)
+    # Removed register_next_step_handler to allow regex handling
+
+# Regex to match YouTube URLs
+YOUTUBE_REGEX = r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
 
 # Function to handle the YouTube URL
+@bot.message_handler(regexp=YOUTUBE_REGEX)
 def handle_url(message):
-    youtube_url = message.text
-    ytdl = YouTubeTranscript(youtube_url, os.getenv("API_KEY"))
-    srt_text = ytdl.get_srt()
-    ytdl.save_to_srt()
-    user_from = message.from_user
-    print(f"Received URL from {user_from.id} ({user_from.username}): {youtube_url}")
-    # Here you would add the logic to download subtitles using the YouTubeTranscript class
-    # For demonstration, we will just echo back the URL
-    filename = ytdl.get_video_info()['name']+'.srt'
-    path = "subtitles"
-    filepath = os.path.join(path, filename)
-    if not os.path.exists(path):
-        os.makedirs(path)
-    with open(filepath, 'rb') as f:
-        bot.send_document(message.from_user.id, f)
-    bot.send_message(message.from_user.id, "Subtitle downloaded successfully!")
+    try:
+        status_msg = bot.reply_to(message, "⏳ Processing video... Please wait.")
+        youtube_url = message.text
+        
+        ytdl = YouTubeTranscript(youtube_url, os.getenv("API_KEY"))
+        
+        # Check if we can get subtitles
+        srt_text = ytdl.get_srt()
+        
+        # Handle error messages returned from main.py
+        if srt_text.startswith("Error") or srt_text.startswith("No subtitles"):
+            bot.edit_message_text(f"❌ {srt_text}", chat_id=message.chat.id, message_id=status_msg.message_id)
+            return
+
+        ytdl.save_to_srt()
+        
+        user_from = message.from_user
+        print(f"Received URL from {user_from.id} ({user_from.username}): {youtube_url}")
+        
+        # Construct filename
+        video_info = ytdl.get_video_info()
+        filename = video_info['name'] + '.srt'
+        path = "subtitles"
+        filepath = os.path.join(path, filename)
+        
+        if os.path.exists(filepath):
+            with open(filepath, 'rb') as f:
+                bot.send_document(message.chat.id, f, caption="✅ Subtitle downloaded successfully!")
+            bot.delete_message(message.chat.id, status_msg.message_id)
+        else:
+            bot.edit_message_text("❌ Error: File could not be saved.", chat_id=message.chat.id, message_id=status_msg.message_id)
+            
+    except Exception as e:
+        print(f"Error processing URL: {e}")
+        bot.reply_to(message, f"❌ An error occurred: {str(e)}")
+
+@bot.message_handler(regexp=r'https?://\S+')
+def handle_invalid_url(message):
+    bot.reply_to(message, "❌ Invalid URL. Please send a valid YouTube link.")
 
 
 bot.polling()
