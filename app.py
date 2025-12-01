@@ -1,7 +1,7 @@
 from telebot import TeleBot
 from dotenv import load_dotenv
 import os
-from main import YouTubeTranscript
+from main import YouTubeTranscript,create_yt_user
 from telebot import types
 import re
 
@@ -13,6 +13,8 @@ bot = TeleBot(API_TOKEN)
 
 @bot.message_handler(commands=['start'])
 def start(message):
+    user = create_yt_user(message.from_user.id, message.from_user.username, message.from_user.first_name, message.from_user.last_name)
+    print(f"User info: {user}")
     keyboard = types.InlineKeyboardMarkup()
     about = types.InlineKeyboardButton(text="ℹ️ About", callback_data="about")
     settings = types.InlineKeyboardButton(text="⚙️ Settings", callback_data="settings")

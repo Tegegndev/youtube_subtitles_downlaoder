@@ -11,8 +11,34 @@ import re
 from urllib.parse import urlparse, parse_qs
 import dotenv
 
-
 dotenv.load_dotenv()
+
+SUPABASE_EDGE_URL = os.getenv("SUPABASE_EDGE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")  # Keep this secret
+
+def create_yt_user(telegram_id, username=None, first_name=None, last_name=None):
+    payload = {
+        "telegram_id": telegram_id,
+        "username": username,
+        "first_name": first_name,
+        "last_name": last_name
+    }
+
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.post(SUPABASE_EDGE_URL, json=payload, headers=headers, timeout=15)
+        if response.status_code in (200, 201):
+            print("User created or updated successfully.")
+            print(response.json())
+            return response.json()
+        else:
+            return {"error": response.text, "status_code": response.status_code}
+    except requests.RequestException as e:
+        return {"error": str(e)}
 
 api_key = os.getenv("API_KEY")
 
