@@ -112,6 +112,7 @@ def handle_url(message):
         if os.path.exists(filepath):
             with open(filepath, 'rb') as f:
                 bot.send_document(message.chat.id, f, caption="✅ English subtitle downloaded successfully!")
+            os.remove(filepath)  # Remove English SRT file after sending
             bot.delete_message(message.chat.id, status_msg.message_id)
             
             # Get transcripts for estimation
@@ -132,6 +133,7 @@ def handle_url(message):
             if os.path.exists(amharic_filepath):
                 with open(amharic_filepath, 'rb') as f:
                     bot.send_document(message.chat.id, f, caption="✅ Amharic subtitle downloaded successfully!\n\n— Developed by @yegna_tv")
+                os.remove(amharic_filepath)  # Remove Amharic SRT file after sending
             else:
                 bot.send_message(message.chat.id, "❌ Failed to generate Amharic subtitle.")
         else:
