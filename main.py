@@ -239,7 +239,7 @@ class YouTubeTranscript:
         # Use threading to speed up translation
         texts = [s['text'] for s in transcripts]
         logging.info("Beginning concurrent translation with 5 workers.")
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             translated_texts = list(executor.map(translate_text, texts))
 
         logging.info("Concurrent translation completed. Generating SRT file.")
