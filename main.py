@@ -255,14 +255,19 @@ class YouTubeTranscript:
 
 if __name__ == "__main__":
     yt = YouTubeTranscript("https://www.youtube.com/watch?v=WOvj84xq_fc",api_key)
-    print(yt.get_srt()[:500])
-    print(yt.get_video_info())
-    yt.save_to_srt()
-    yt.amharic_translate()
-    # Print Amharic version
-    amharic_path = os.path.join('subtitles', f"am_{yt.get_video_info()['name'].replace(' ', '_')}.srt")
-    if os.path.exists(amharic_path):
-        with open(amharic_path, 'r', encoding='utf-8') as f:
-            print(f.read()[:500])
+    srt = yt.get_srt()
+    print(srt[:500])
+    if srt.startswith("Error"):
+        print("Failed to retrieve transcript data. Skipping further processing.")
+        
     else:
-        print("Amharic SRT file not found.")
+        print(yt.get_video_info())
+        yt.save_to_srt()
+        yt.amharic_translate()
+        # Print Amharic version
+        amharic_path = os.path.join('subtitles', f"am_{yt.get_video_info()['name'].replace(' ', '_')}.srt")
+        if os.path.exists(amharic_path):
+            with open(amharic_path, 'r', encoding='utf-8') as f:
+                print(f.read()[:500])
+        else:
+            print("Amharic SRT file not found.")
