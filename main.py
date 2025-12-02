@@ -226,49 +226,18 @@ class YouTubeTranscript:
         
         logging.info(f"Starting Amharic translation for {len(transcripts)} segments.")
         
-        # Batch translation with word limit
+        # Perform sequential translation
         texts = [s['text'] for s in transcripts]
         translated_texts = []
-        batch_size = 10  # Max texts per batch
-        max_words = 5000  # Max words per request
-        
-        for i in range(0, len(texts), batch_size):
-            batch_texts = texts[i:i + batch_size]
-            batch_word_count = sum(len(text.split()) for text in batch_texts)
-            if batch_word_count > max_words:
-                # Split further if needed
-                sub_batches = []
-                current_batch = []
-                current_words = 0
-                for text in batch_texts:
-                    word_count = len(text.split())
-                    if current_words + word_count > max_words:
-                        if current_batch:
-                            sub_batches.append(current_batch)
-                        current_batch = [text]
-                        current_words = word_count
-                    else:
-                        current_batch.append(text)
-                        current_words += word_count
-                if current_batch:
-                    sub_batches.append(current_batch)
-                for sub_batch in sub_batches:
-                    try:
-                        results = t.translate(sub_batch, dest='am')
-                        translated_texts.extend([result.text for result in results])
-                    except Exception as e:
-                        logging.warning(f"Sub-batch translation failed: {str(e)}. Using originals.")
-                        translated_texts.extend(sub_batch)
-            else:
-                try:
-                    results = t.translate(batch_texts, dest='am')
-                    translated_texts.extend([result.text for result in results])
-                except Exception as e:
-                    logging.warning(f"Batch translation failed for segments {i}-{i+len(batch_texts)}: {str(e)}. Using originals.")
-                    translated_texts.extend(batch_texts)
-            
-            if (i // batch_size + 1) % 5 == 0:  # Log progress every 5 batches
-                logging.info(f"Processed {min(i + batch_size, len(texts))}/{len(texts)} segments.")
+        for i, text in enumerate(texts):
+            try:
+                result = t.translate(text, dest='am').text
+                translated_texts.append(result)
+                if (i + 1) % 10 == 0:
+                    logging.info(f"Translated {i + 1}/{len(texts)} segments.")
+            except Exception as e:
+                logging.warning(f"Translation failed for segment {i}: {str(e)}. Using original.")
+                translated_texts.append(text)
 
         logging.info("Translation completed. Generating SRT file.")
         srt_lines = []
