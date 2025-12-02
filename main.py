@@ -259,3 +259,10 @@ if __name__ == "__main__":
     print(yt.get_video_info())
     yt.save_to_srt()
     yt.amharic_translate()
+    # Print Amharic version
+    amharic_path = os.path.join('subtitles', f"am_{yt.get_video_info()['name'].replace(' ', '_')}.srt")
+    if os.path.exists(amharic_path):
+        with open(amharic_path, 'r', encoding='utf-8') as f:
+            print(f.read()[:500])
+    else:
+        print("Amharic SRT file not found.")
