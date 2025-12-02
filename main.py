@@ -210,7 +210,6 @@ class YouTubeTranscript:
     
     def amharic_translate(self):
         from translatepy import Translator
-        from concurrent.futures import ThreadPoolExecutor
         t = Translator()
         
         transcripts = self._get_transcript_data()
@@ -236,13 +235,13 @@ class YouTubeTranscript:
                 logging.warning(f"Translation failed for segment '{text[:50]}...': {str(e)}. Using original text.")
                 return text
 
-        # Use threading to speed up translation
+        # Perform translation sequentially without threading
         texts = [s['text'] for s in transcripts]
-        logging.info("Beginning concurrent translation with 5 workers.")
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            translated_texts = list(executor.map(translate_text, texts))
+        translated_texts = []
+        for text in texts:
+            translated_texts.append(translate_text(text))
 
-        logging.info("Concurrent translation completed. Generating SRT file.")
+        logging.info("Translation completed. Generating SRT file.")
         srt_lines = []
         for i, (segment, translated_text) in enumerate(zip(transcripts, translated_texts), start=1):
             start_time = self._format_time(segment['start'])
