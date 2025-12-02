@@ -19,6 +19,9 @@ bot = TeleBot(API_TOKEN)
 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")  
 
+# Global dict to store last URL per chat_id
+last_url = {}
+
 # Webhook endpoint to handle incoming updates
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -102,7 +105,7 @@ def callback_donate(call):
         invoice_payload="donation",
         provider_token="",  
         currency="XTR",
-        prices=[types.LabeledPrice(label="Donation", amount=10)],
+        prices=[types.LabeledPrice(label="Donation", amount=1)],
         start_parameter="donate"
     )
 
@@ -146,7 +149,6 @@ def handle_url(message):
         filename = f"{safe_name}.srt"
         path = "subtitles"
         filepath = os.path.join(path, filename)
-        amharic_filename = f"am_{safe_name}.srt"
         
         if os.path.exists(filepath):
             with open(filepath, 'rb') as f:
@@ -154,37 +156,54 @@ def handle_url(message):
             os.remove(filepath)  # Remove English SRT file after sending
             bot.delete_message(message.chat.id, status_msg.message_id)
             
-            # Get transcripts for estimation
-            transcripts = ytdl._get_transcript_data()
-            if transcripts:
-                num_segments = len(transcripts)
-                estimated_seconds = num_segments / 10  # Assuming 10 workers
-                estimated_minutes = estimated_seconds / 60
-                bot.send_message(message.chat.id, f"Translating to Amharic version... Estimated time: {estimated_minutes:.1f} minutes")
-            else:
-                bot.send_message(message.chat.id, "Translating to Amharic version...")
+            # Store URL for optional Amharic
+            last_url[message.chat.id] = youtube_url
             
-            logging.info("About to call amharic_translate")
-            ytdl.amharic_translate()
-            logging.info(f"amharic_translate completed. File exists: {os.path.exists(os.path.join(path, amharic_filename))}")
-            
-            # Send Amharic version
-            amharic_filepath = os.path.join(path, amharic_filename)
-            if os.path.exists(amharic_filepath):
-                file_size = os.path.getsize(amharic_filepath)
-                logging.info(f"Sending Amharic file: {amharic_filepath}, size: {file_size} bytes")
-                with open(amharic_filepath, 'rb') as f:
-                    bot.send_document(message.chat.id, f, caption="✅ Amharic subtitle downloaded successfully!\n\n— Developed by @yegna_tv")
-                os.remove(amharic_filepath)  # Remove Amharic SRT file after sending
-            else:
-                logging.warning("Amharic file not found after translation")
-                bot.send_message(message.chat.id, "❌ Failed to generate Amharic subtitle.")
+            # Send option for Amharic
+            keyboard = types.InlineKeyboardMarkup()
+            amharic_btn = types.InlineKeyboardButton(text="🌍 Translate to Amharic", callback_data="translate_amharic")
+            keyboard.add(amharic_btn)
+            bot.send_message(message.chat.id, "Would you like to translate the subtitles to Amharic?", reply_markup=keyboard)
         else:
             bot.edit_message_text("❌ Error: English file could not be saved.", chat_id=message.chat.id, message_id=status_msg.message_id)
             
     except Exception as e:
         logging.error(f"Error processing URL: {e}")
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
+
+@bot.callback_query_handler(func=lambda call: call.data == "translate_amharic")
+def callback_translate_amharic(call):
+    chat_id = call.message.chat.id
+    url = last_url.get(chat_id)
+    if not url:
+        bot.answer_callback_query(call.id, "No URL found. Please send a YouTube URL first.", show_alert=True)
+        return
+    
+    bot.answer_callback_query(call.id)
+    status_msg = bot.send_message(chat_id, "⏳ Translating to Amharic version... Please wait.")
+    
+    try:
+        ytdl = YouTubeTranscript(url, os.getenv("API_KEY"))
+        ytdl.amharic_translate()
+        
+        # Construct filename
+        video_info = ytdl.get_video_info()
+        video_name = video_info['name']
+        safe_name = "".join([c for c in video_name if c.isalpha() or c.isdigit() or c in " ._-"]).strip()
+        amharic_filename = f"am_{safe_name}.srt"
+        path = "subtitles"
+        amharic_filepath = os.path.join(path, amharic_filename)
+        
+        if os.path.exists(amharic_filepath):
+            with open(amharic_filepath, 'rb') as f:
+                bot.send_document(chat_id, f, caption="✅ Amharic subtitle downloaded successfully!\n\n— Developed by @yegna_tv")
+            os.remove(amharic_filepath)
+            bot.delete_message(chat_id, status_msg.message_id)
+        else:
+            bot.edit_message_text("❌ Failed to generate Amharic subtitle.", chat_id=chat_id, message_id=status_msg.message_id)
+    except Exception as e:
+        logging.error(f"Error in Amharic translation: {e}")
+        bot.edit_message_text(f"❌ An error occurred: {str(e)}", chat_id=chat_id, message_id=status_msg.message_id)
 
 @bot.message_handler(regexp=r'https?://\S+')
 def handle_invalid_url(message):
