@@ -13,6 +13,7 @@ API_TOKEN =os.getenv("BOT_TOKEN")
 app = Flask(__name__)
 bot = TeleBot(API_TOKEN)
 
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  
 
 # Webhook endpoint to handle incoming updates
 @app.route('/webhook', methods=['POST'])
