@@ -12,6 +12,7 @@ from urllib.parse import urlparse, parse_qs
 import dotenv
 import logging
 from googletrans import Translator
+from concurrent.futures import ThreadPoolExecutor
 
 dotenv.load_dotenv()
 
@@ -210,8 +211,6 @@ class YouTubeTranscript:
         logging.info(f"SRT file saved to: {file_path}")
     
     def amharic_translate(self):
-        t = Translator()
-        
         transcripts = self._get_transcript_data()
         if not transcripts:
             logging.warning("No transcripts available for translation.")
@@ -226,18 +225,19 @@ class YouTubeTranscript:
         
         logging.info(f"Starting Amharic translation for {len(transcripts)} segments.")
         
-        # Perform sequential translation
-        texts = [s['text'] for s in transcripts]
-        translated_texts = []
-        for i, text in enumerate(texts):
+        def translate_text(text):
             try:
+                t = Translator()  # New instance per thread
                 result = t.translate(text, dest='am').text
-                translated_texts.append(result)
-                if (i + 1) % 10 == 0:
-                    logging.info(f"Translated {i + 1}/{len(texts)} segments.")
+                return result
             except Exception as e:
-                logging.warning(f"Translation failed for segment {i}: {str(e)}. Using original.")
-                translated_texts.append(text)
+                logging.warning(f"Translation failed for segment: {str(e)}. Using original.")
+                return text
+
+        # Parallel translation
+        texts = [s['text'] for s in transcripts]
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            translated_texts = list(executor.map(translate_text, texts))
 
         logging.info("Translation completed. Generating SRT file.")
         srt_lines = []
