@@ -161,7 +161,7 @@ def handle_url(message):
             
             # Send option for Amharic
             keyboard = types.InlineKeyboardMarkup()
-            amharic_btn = types.InlineKeyboardButton(text="🌍 Translate to Amharic", callback_data="translate_amharic")
+            amharic_btn = types.InlineKeyboardButton(text="🇪🇹 አማርኛ  Translate to Amharic", callback_data="translate_amharic")
             keyboard.add(amharic_btn)
             bot.send_message(message.chat.id, "Would you like to translate the subtitles to Amharic?", reply_markup=keyboard)
         else:
@@ -196,7 +196,7 @@ def callback_translate_amharic(call):
         
         if os.path.exists(amharic_filepath):
             with open(amharic_filepath, 'rb') as f:
-                bot.send_document(chat_id, f, caption="✅ Amharic subtitle downloaded successfully!\n\n— Developed by @yegna_tv")
+                bot.send_document(chat_id, f, caption="Amharic subtitle downloaded successfully!\n\n— Developed by @yegna_tv")
             os.remove(amharic_filepath)
             bot.delete_message(chat_id, status_msg.message_id)
         else:
