@@ -81,13 +81,7 @@ class YouTubeTranscript:
         return base64.b64encode(payload.encode()).decode()
 
     def _load_or_generate_cookies(self):
-        if Path(self.COOKIE_FILE).exists():
-            with open(self.COOKIE_FILE) as f:
-                data = json.load(f)
-            if time.time() - data.get("saved_at", 0) < self.REFRESH_INTERVAL:
-                return data["cookies"]
-
-        # Generate fresh
+        # Always generate fresh cookies on run, do not load from file
         new_cookies = {
             'sbox-guid': self._generate_sbox_guid(),
             'anonymous_user_id': str(uuid.uuid4())
