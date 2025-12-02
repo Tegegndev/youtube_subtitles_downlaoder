@@ -217,11 +217,6 @@ class YouTubeTranscript:
             logging.warning("No transcripts available for translation.")
             return
 
-        # Limit to first 1 segment for testing
-        if len(transcripts) > 1:
-            transcripts = transcripts[:1]
-            logging.info("Limiting translation to first 1 segment for testing.")
-
         # Sanitize filename
         video_name = self.get_video_info().get('name', 'video')
         safe_name = "".join([c for c in video_name if c.isalpha() or c.isdigit() or c in " ._-"]).strip()
@@ -232,19 +227,15 @@ class YouTubeTranscript:
         logging.info(f"Starting Amharic translation for {len(transcripts)} segments.")
         
         def translate_text(text):
-            print(f"Translating: {text[:50]}...")
             try:
-                print("Before translate call")
                 result = t.translate(text, dest='am').text
-                print("After translate call")
                 logging.info(f"Translated segment: '{text[:50]}...' to Amharic.")
                 return result
             except Exception as e:
-                print(f"Translation failed: {str(e)}")
                 logging.warning(f"Translation failed for segment '{text[:50]}...': {str(e)}. Using original text.")
                 return text
 
-        # Perform translation sequentially without threading
+        # Perform translation sequentially
         texts = [s['text'] for s in transcripts]
         translated_texts = []
         for text in texts:
