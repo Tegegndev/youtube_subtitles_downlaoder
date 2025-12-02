@@ -182,4 +182,8 @@ def handle_invalid_url(message):
     bot.reply_to(message, "❌ Invalid URL. Please send a valid YouTube link.")
 
 
-bot.polling()
+
+
+#bot.polling()
+if __name__ == "__main__":
+   app.run(port=5000,debug=True)
