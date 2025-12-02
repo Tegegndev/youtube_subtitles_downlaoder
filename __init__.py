@@ -3,13 +3,46 @@ from dotenv import load_dotenv
 import os
 from main import YouTubeTranscript,create_yt_user
 from telebot import types
+import telebot
 import re
+from flask import Flask ,request
 
 load_dotenv()
 API_TOKEN =os.getenv("BOT_TOKEN")
 
-
+app = Flask(__name__)
 bot = TeleBot(API_TOKEN)
+
+
+# Webhook endpoint to handle incoming updates
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    json_data = request.get_json()
+    bot.process_new_updates([telebot.types.Update.de_json(json_data)])
+    return '', 200
+
+
+# Homepage route
+@app.route('/')
+def home():
+    return "Welcome to YouTube Subtitle Downloader Bot ", 200
+
+# Set the webhook
+@app.route('/set_webhook', methods=['GET'])
+def set_webhook():
+    if bot.set_webhook(WEBHOOK_URL):
+        return "Webhook set successfully!", 200
+    else:
+        return "Failed to set webhook.", 400
+    
+#remove webhook
+@app.route('/remove_webhook', methods=['GET'])
+def remove_webhook():
+    if bot.remove_webhook():
+        return "Webhook removed successfully!", 200
+    else:
+        return "Failed to remove webhook.", 400
+
 
 @bot.message_handler(commands=['start'])
 def start(message):
