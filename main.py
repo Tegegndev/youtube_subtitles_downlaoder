@@ -11,7 +11,7 @@ import re
 from urllib.parse import urlparse, parse_qs
 import dotenv
 import logging
-from translatepy import Translator
+from googletrans import Translator
 
 dotenv.load_dotenv()
 
@@ -235,7 +235,7 @@ class YouTubeTranscript:
             print(f"Translating: {text[:50]}...")
             try:
                 print("Before translate call")
-                result = t.translate(text, "am").result
+                result = t.translate(text, dest='am').text
                 print("After translate call")
                 logging.info(f"Translated segment: '{text[:50]}...' to Amharic.")
                 return result
