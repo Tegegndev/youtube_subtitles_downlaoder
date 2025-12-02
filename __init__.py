@@ -146,6 +146,7 @@ def handle_url(message):
         filename = f"{safe_name}.srt"
         path = "subtitles"
         filepath = os.path.join(path, filename)
+        amharic_filename = f"am_{safe_name}.srt"
         
         if os.path.exists(filepath):
             with open(filepath, 'rb') as f:
@@ -168,7 +169,6 @@ def handle_url(message):
             logging.info(f"amharic_translate completed. File exists: {os.path.exists(os.path.join(path, amharic_filename))}")
             
             # Send Amharic version
-            amharic_filename = f"am_{safe_name}.srt"
             amharic_filepath = os.path.join(path, amharic_filename)
             if os.path.exists(amharic_filepath):
                 file_size = os.path.getsize(amharic_filepath)
