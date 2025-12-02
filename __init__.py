@@ -6,9 +6,13 @@ from telebot import types
 import telebot
 import re
 from flask import Flask ,request
+import logging
 
 load_dotenv()
 API_TOKEN =os.getenv("BOT_TOKEN")
+
+# Configure logging
+logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 bot = TeleBot(API_TOKEN)
@@ -48,7 +52,7 @@ def remove_webhook():
 @bot.message_handler(commands=['start'])
 def start(message):
     user = create_yt_user(message.from_user.id, message.from_user.username, message.from_user.first_name, message.from_user.last_name)
-    print(f"User info: {user}")
+    logging.info(f"User info: {user}")
     keyboard = types.InlineKeyboardMarkup()
     about = types.InlineKeyboardButton(text="ℹ️ About", callback_data="about")
     settings = types.InlineKeyboardButton(text="⚙️ Settings", callback_data="settings")
@@ -133,7 +137,7 @@ def handle_url(message):
         ytdl.save_to_srt()
         
         user_from = message.from_user
-        print(f"Received URL from {user_from.id} ({user_from.username}): {youtube_url}")
+        logging.info(f"Received URL from {user_from.id} ({user_from.username}): {youtube_url}")
         
         # Construct filename
         video_info = ytdl.get_video_info()
@@ -174,7 +178,7 @@ def handle_url(message):
             bot.edit_message_text("❌ Error: English file could not be saved.", chat_id=message.chat.id, message_id=status_msg.message_id)
             
     except Exception as e:
-        print(f"Error processing URL: {e}")
+        logging.error(f"Error processing URL: {e}")
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
 @bot.message_handler(regexp=r'https?://\S+')
@@ -187,4 +191,6 @@ def handle_invalid_url(message):
 #bot.polling()
 if __name__ == "__main__":
    print("Starting Flask server...")
+   #bot.remove_webhook()
+   #bot.polling()    
    app.run(port=5000,debug=True)

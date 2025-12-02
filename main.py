@@ -10,8 +10,12 @@ from pathlib import Path
 import re
 from urllib.parse import urlparse, parse_qs
 import dotenv
+import logging
 
 dotenv.load_dotenv()
+
+# Configure logging
+logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 SUPABASE_EDGE_URL = os.getenv("SUPABASE_EDGE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")  # Keep this secret
@@ -32,12 +36,14 @@ def create_yt_user(telegram_id, username=None, first_name=None, last_name=None):
     try:
         response = requests.post(SUPABASE_EDGE_URL, json=payload, headers=headers, timeout=15)
         if response.status_code in (200, 201):
-            print("User created or updated successfully.")
-            print(response.json())
+            logging.info("User created or updated successfully.")
+            logging.info(response.json())
             return response.json()
         else:
+            logging.error(f"Failed to create/update user: {response.text} (Status: {response.status_code})")
             return {"error": response.text, "status_code": response.status_code}
     except requests.RequestException as e:
+        logging.error(f"Request exception in create_yt_user: {str(e)}")
         return {"error": str(e)}
 
 api_key = os.getenv("API_KEY")
@@ -126,7 +132,7 @@ class YouTubeTranscript:
                 available_languages = list(transcripts_map.keys())
                 if available_languages:
                     language = available_languages[0]
-                    print(f"Requested language not found. Falling back to '{language}'")
+                    logging.warning(f"Requested language not found. Falling back to '{language}'")
                 else:
                     return None
 
@@ -200,7 +206,7 @@ class YouTubeTranscript:
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(srt_content)
         
-        print(f"SRT file saved to: {file_path}")
+        logging.info(f"SRT file saved to: {file_path}")
     
     def amharic_translate(self):
         from translatepy import Translator
@@ -209,7 +215,7 @@ class YouTubeTranscript:
         
         transcripts = self._get_transcript_data()
         if not transcripts:
-            print("No transcripts available for translation.")
+            logging.warning("No transcripts available for translation.")
             return
 
         # Sanitize filename
@@ -219,19 +225,24 @@ class YouTubeTranscript:
         full_path = os.path.join('subtitles', filename)
         os.makedirs('subtitles', exist_ok=True)
         
-        print(f"Translating {len(transcripts)} segments to Amharic...")
+        logging.info(f"Starting Amharic translation for {len(transcripts)} segments.")
         
         def translate_text(text):
             try:
-                return t.translate(text, "am").result
-            except Exception:
+                result = t.translate(text, "am").result
+                logging.info(f"Translated segment: '{text[:50]}...' to Amharic.")
+                return result
+            except Exception as e:
+                logging.warning(f"Translation failed for segment '{text[:50]}...': {str(e)}. Using original text.")
                 return text
 
         # Use threading to speed up translation
         texts = [s['text'] for s in transcripts]
+        logging.info("Beginning concurrent translation with 10 workers.")
         with ThreadPoolExecutor(max_workers=10) as executor:
             translated_texts = list(executor.map(translate_text, texts))
 
+        logging.info("Concurrent translation completed. Generating SRT file.")
         srt_lines = []
         for i, (segment, translated_text) in enumerate(zip(transcripts, translated_texts), start=1):
             start_time = self._format_time(segment['start'])
@@ -240,7 +251,7 @@ class YouTubeTranscript:
             
         with open(full_path, 'w', encoding='utf-8') as f:
             f.write("\n".join(srt_lines))
-        print(f"Translation saved to {full_path}")
+        logging.info(f"Amharic translation saved to {full_path}")
 
 if __name__ == "__main__":
     yt = YouTubeTranscript("https://www.youtube.com/watch?v=WOvj84xq_fc",api_key)
