@@ -273,7 +273,9 @@ if __name__ == "__main__":
         yt.save_to_srt()
         yt.amharic_translate()
         # Print Amharic version
-        amharic_path = os.path.join('subtitles', f"am_{yt.get_video_info()['name'].replace(' ', '_')}.srt")
+        video_name = yt.get_video_info()['name']
+        safe_name = "".join([c for c in video_name if c.isalpha() or c.isdigit() or c in " ._-"]).strip()
+        amharic_path = os.path.join('subtitles', f"am_{safe_name}.srt")
         if os.path.exists(amharic_path):
             with open(amharic_path, 'r', encoding='utf-8') as f:
                 print(f.read()[:500])
