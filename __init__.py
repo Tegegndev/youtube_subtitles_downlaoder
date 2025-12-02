@@ -186,4 +186,5 @@ def handle_invalid_url(message):
 
 #bot.polling()
 if __name__ == "__main__":
+   print("Starting Flask server...")
    app.run(port=5000,debug=True)
