@@ -217,6 +217,11 @@ class YouTubeTranscript:
             logging.warning("No transcripts available for translation.")
             return
 
+        # Limit to first 10 segments to avoid killing the process
+        if len(transcripts) > 4:
+            transcripts = transcripts[:10]
+            logging.info("Limiting translation to first 10 segments.")
+
         # Sanitize filename
         video_name = self.get_video_info().get('name', 'video')
         safe_name = "".join([c for c in video_name if c.isalpha() or c.isdigit() or c in " ._-"]).strip()
