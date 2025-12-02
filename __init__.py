@@ -163,16 +163,21 @@ def handle_url(message):
             else:
                 bot.send_message(message.chat.id, "Translating to Amharic version...")
             
+            logging.info("About to call amharic_translate")
             ytdl.amharic_translate()
+            logging.info(f"amharic_translate completed. File exists: {os.path.exists(os.path.join(path, amharic_filename))}")
             
             # Send Amharic version
             amharic_filename = f"am_{safe_name}.srt"
             amharic_filepath = os.path.join(path, amharic_filename)
             if os.path.exists(amharic_filepath):
+                file_size = os.path.getsize(amharic_filepath)
+                logging.info(f"Sending Amharic file: {amharic_filepath}, size: {file_size} bytes")
                 with open(amharic_filepath, 'rb') as f:
                     bot.send_document(message.chat.id, f, caption="✅ Amharic subtitle downloaded successfully!\n\n— Developed by @yegna_tv")
                 os.remove(amharic_filepath)  # Remove Amharic SRT file after sending
             else:
+                logging.warning("Amharic file not found after translation")
                 bot.send_message(message.chat.id, "❌ Failed to generate Amharic subtitle.")
         else:
             bot.edit_message_text("❌ Error: English file could not be saved.", chat_id=message.chat.id, message_id=status_msg.message_id)
