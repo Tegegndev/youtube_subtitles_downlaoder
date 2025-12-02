@@ -11,6 +11,7 @@ import re
 from urllib.parse import urlparse, parse_qs
 import dotenv
 import logging
+from translatepy import Translator
 
 dotenv.load_dotenv()
 
@@ -209,7 +210,6 @@ class YouTubeTranscript:
         logging.info(f"SRT file saved to: {file_path}")
     
     def amharic_translate(self):
-        from translatepy import Translator
         t = Translator()
         
         transcripts = self._get_transcript_data()
@@ -232,11 +232,15 @@ class YouTubeTranscript:
         logging.info(f"Starting Amharic translation for {len(transcripts)} segments.")
         
         def translate_text(text):
+            print(f"Translating: {text[:50]}...")
             try:
+                print("Before translate call")
                 result = t.translate(text, "am").result
+                print("After translate call")
                 logging.info(f"Translated segment: '{text[:50]}...' to Amharic.")
                 return result
             except Exception as e:
+                print(f"Translation failed: {str(e)}")
                 logging.warning(f"Translation failed for segment '{text[:50]}...': {str(e)}. Using original text.")
                 return text
 
